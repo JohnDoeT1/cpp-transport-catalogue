@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio
+.vs/
+.vscode/
+*.vsix
+*.user
+*.userosscache
+*.suo
+*.sdf
+*.db
