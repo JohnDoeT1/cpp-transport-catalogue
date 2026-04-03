@@ -119,7 +119,7 @@ InputReader::ApplyCommands(catalogue::TransportCatalogue& catalogue) const
     for (const auto& cmd : commands_) {
         if (cmd.command == "Stop") {
             auto coords = ParseCoordinates(cmd.description);
-            catalogue.AddStop(cmd.id, coords.lat, coords.lng);
+            catalogue.AddStop(cmd.id, coords);
         }
     }
 
@@ -128,14 +128,7 @@ InputReader::ApplyCommands(catalogue::TransportCatalogue& catalogue) const
         if (cmd.command == "Bus") {
             bool is_circular = cmd.description.find('>') != std::string::npos;
             auto stop_names_views = ParseRoute(cmd.description);
-
-            std::vector<std::string> stop_names;
-            stop_names.reserve(stop_names_views.size());
-            for (auto sv : stop_names_views) {
-                stop_names.emplace_back(sv);
-            }
-
-            catalogue.AddBus(cmd.id, stop_names, is_circular);
+            catalogue.AddBus(cmd.id, stop_names_views, is_circular);
         }
     }
 }

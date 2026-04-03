@@ -6,48 +6,58 @@ namespace transport {
 namespace catalogue {
 
 void
-TransportCatalogue::AddStop(const std::string& name, double lat, double lon)
+TransportCatalogue::AddStop(const std::string& name, const geo::Coordinates& coords)
 {
-    stops_[name] = Stop{ name, {lat, lon} };
+    stops_storage_.push_back({name, coords});
+    const Stop* stop_ptr = &stops_storage_.back();
+    stops_[name] = stop_ptr;
 }
 
 const Stop*
 TransportCatalogue::FindStop(const std::string& name) const
 {
     auto it = stops_.find(name);
-    return it != stops_.end() ? &it->second : nullptr;
+    return it != stops_.end() ? it->second : nullptr;
 }
 
 void
 TransportCatalogue::AddBus(const std::string& bus_name,
-    const std::vector<std::string>& stop_names,
+    const std::vector<std::string_view>& stop_names,
     bool is_circular)
 {
     std::vector<const Stop*> stop_pointers;
     stop_pointers.reserve(stop_names.size());
 
-    for (const auto& stop_name : stop_names) {
+    for (std::string_view stop_name_view : stop_names) {
+        std::string stop_name(stop_name_view);
         if (const Stop* stop = FindStop(stop_name)) {
             stop_pointers.push_back(stop);
-            stop_to_buses_[stop_name].insert(bus_name);
         }
     }
 
     if (stop_pointers.empty())
         return;
 
-    routes_[bus_name] = BusRoute{
-        bus_name,
-        std::move(stop_pointers),
-        is_circular
-    };
+    routes_storage_.push_back({bus_name, std::move(stop_pointers), is_circular});
+    const BusRoute* route_ptr = &routes_storage_.back();
+    routes_[bus_name] = route_ptr;
+    
+    // Добавляем автобус к остановкам
+    std::unordered_set<std::string> unique_stops;
+    for (std::string_view stop_name_view : stop_names) {
+        unique_stops.emplace(stop_name_view);
+    }
+    
+    for (const auto& stop_name : unique_stops) {
+        stop_to_buses_[stop_name].insert(bus_name);
+    }
 }
 
 const BusRoute*
 TransportCatalogue::FindBus(const std::string& bus_name) const
 {
     auto it = routes_.find(bus_name);
-    return it != routes_.end() ? &it->second : nullptr;
+    return it != routes_.end() ? it->second : nullptr;
 }
 
 RouteStats
@@ -91,21 +101,15 @@ TransportCatalogue::GetRouteStats(const BusRoute& route) const
     return stats;
 }
 
-std::vector<std::string>
+const std::unordered_set<std::string>&
 TransportCatalogue::GetBusesByStop(const std::string& stop_name) const
 {
-    std::vector<std::string> result;
-
+    static const std::unordered_set<std::string> empty_set;
     auto it = stop_to_buses_.find(stop_name);
     if (it != stop_to_buses_.end()) {
-        result.reserve(it->second.size());
-        for (const auto& bus : it->second) {
-            result.push_back(bus);
-        }
-        std::sort(result.begin(), result.end());
+        return it->second;
     }
-
-    return result;
+    return empty_set;
 }
 
 } // namespace catalogue
