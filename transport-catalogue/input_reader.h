@@ -8,6 +8,11 @@
 namespace transport {
 namespace input {
 
+struct StopDistance {
+    std::string stop_name;
+    int distance;
+};
+
 struct CommandDescription {
     explicit operator bool() const
     {
@@ -22,6 +27,7 @@ struct CommandDescription {
     std::string command;
     std::string id;
     std::string description;
+    std::vector<StopDistance> distances;  // Новое поле для хранения расстояний до других остановок
 };
 
 class InputReader {
