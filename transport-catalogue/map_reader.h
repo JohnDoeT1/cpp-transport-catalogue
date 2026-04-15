@@ -1,13 +1,20 @@
 #pragma once
 
 #include "svg.h"
-#include "transport_catalogue.h"
-#include "domain.h"
+#include "geo.h"
 #include <vector>
 #include <string>
 #include <map>
 #include <optional>
 #include <algorithm>
+#include <functional>
+#include <unordered_map>
+#include <string_view>
+
+namespace transport::catalogue {
+    struct StopData;
+    struct BusData;
+}
 
 namespace renderer {
 
@@ -95,24 +102,38 @@ class MapRenderer {
 public:
     MapRenderer(const RenderSettings& settings);
     
-    svg::Document Render(const transport::catalogue::TransportCatalogue& catalogue) const;
+    // Метод принимает только необходимые данные: маршруты и функцию поиска остановки
+    svg::Document Render(
+        const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop
+    ) const;
     
 private:
-    void RenderBusLines(svg::Document& doc, 
-                        const transport::catalogue::TransportCatalogue& catalogue,
-                        const SphereProjector& projector) const;
+    void RenderBusLines(
+        svg::Document& doc,
+        const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+        const SphereProjector& projector
+    ) const;
     
-    void RenderBusLabels(svg::Document& doc,
-                        const transport::catalogue::TransportCatalogue& catalogue,
-                        const SphereProjector& projector) const;
+    void RenderBusLabels(
+        svg::Document& doc,
+        const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+        const SphereProjector& projector
+    ) const;
     
-    void RenderStopCircles(svg::Document& doc,
-                          const transport::catalogue::TransportCatalogue& catalogue,
-                          const SphereProjector& projector) const;
+    void RenderStopCircles(
+        svg::Document& doc,
+        const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
+        const SphereProjector& projector
+    ) const;
     
-    void RenderStopLabels(svg::Document& doc,
-                         const transport::catalogue::TransportCatalogue& catalogue,
-                         const SphereProjector& projector) const;
+    void RenderStopLabels(
+        svg::Document& doc,
+        const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
+        const SphereProjector& projector
+    ) const;
     
     const RenderSettings& settings_;
 };

@@ -164,7 +164,7 @@ json::Node JsonReader::ProcessBusRequest(const json::Dict& request) {
     return json::Node(std::move(response));
 }
 
-json::Node JsonReader::ProcessMapRequest(const json::Dict& request, 
+json::Node JsonReader::ProcessMapRequest(const json::Dict& request,
                                           const renderer::MapRenderer& renderer) {
     int id = request.at("id").AsInt();
     
@@ -173,7 +173,13 @@ json::Node JsonReader::ProcessMapRequest(const json::Dict& request,
     
     // Рендерим карту в строку
     std::ostringstream svg_stream;
-    auto doc = renderer.Render(catalogue_);
+    
+    // Обновлённый вызов: передаём только нужные данные
+    auto doc = renderer.Render(
+        catalogue_.GetAllBuses(),
+        [this](std::string_view name) { return catalogue_.FindStop(name); }
+    );
+    
     doc.Render(svg_stream);
     
     response["map"] = svg_stream.str();

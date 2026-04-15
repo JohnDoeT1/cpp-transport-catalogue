@@ -1,4 +1,5 @@
 #include "map_renderer.h"
+#include "transport_catalogue.h"
 #include <algorithm>
 #include <set>
 #include <unordered_set>
@@ -7,7 +8,10 @@ namespace renderer {
 
 MapRenderer::MapRenderer(const RenderSettings& settings) : settings_(settings) {}
 
-svg::Document MapRenderer::Render(const transport::catalogue::TransportCatalogue& catalogue) const {
+svg::Document MapRenderer::Render(
+    const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+    std::function<const transport::catalogue::StopData*(std::string_view)> find_stop) const {
+    
     svg::Document doc;
     
     // Собираем все координаты остановок, через которые проходят маршруты
@@ -15,7 +19,7 @@ svg::Document MapRenderer::Render(const transport::catalogue::TransportCatalogue
     std::set<std::string> bus_names;
     
     // Получаем все маршруты
-    for (const auto& [name, bus] : catalogue.GetAllBuses()) {
+    for (const auto& [name, bus] : buses) {
         if (!bus->stops.empty()) {
             bus_names.insert(std::string(name));
             for (const auto* stop : bus->stops) {
@@ -34,20 +38,22 @@ svg::Document MapRenderer::Render(const transport::catalogue::TransportCatalogue
                              settings_.width, settings_.height, settings_.padding);
     
     // Рисуем все слои в правильном порядке
-    RenderBusLines(doc, catalogue, projector);
-    RenderBusLabels(doc, catalogue, projector);
-    RenderStopCircles(doc, catalogue, projector);
-    RenderStopLabels(doc, catalogue, projector);
+    RenderBusLines(doc, buses, projector);
+    RenderBusLabels(doc, buses, projector);
+    RenderStopCircles(doc, buses, find_stop, projector);
+    RenderStopLabels(doc, buses, find_stop, projector);
     
     return doc;
 }
 
-void MapRenderer::RenderBusLines(svg::Document& doc,
-                                const transport::catalogue::TransportCatalogue& catalogue,
-                                const SphereProjector& projector) const {
+void MapRenderer::RenderBusLines(
+    svg::Document& doc,
+    const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+    const SphereProjector& projector) const {
+    
     // Получаем отсортированные названия маршрутов
     std::vector<std::string> bus_names;
-    for (const auto& [name, bus] : catalogue.GetAllBuses()) {
+    for (const auto& [name, bus] : buses) {
         if (!bus->stops.empty()) {
             bus_names.push_back(std::string(name));
         }
@@ -56,7 +62,10 @@ void MapRenderer::RenderBusLines(svg::Document& doc,
     
     size_t color_index = 0;
     for (const auto& bus_name : bus_names) {
-        const auto* bus = catalogue.FindBus(bus_name);
+        auto it = buses.find(bus_name);
+        if (it == buses.end()) continue;
+        
+        const auto* bus = it->second;
         if (!bus || bus->stops.empty()) {
             continue;
         }
@@ -92,12 +101,14 @@ void MapRenderer::RenderBusLines(svg::Document& doc,
     }
 }
 
-void MapRenderer::RenderBusLabels(svg::Document& doc,
-                                 const transport::catalogue::TransportCatalogue& catalogue,
-                                 const SphereProjector& projector) const {
+void MapRenderer::RenderBusLabels(
+    svg::Document& doc,
+    const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+    const SphereProjector& projector) const {
+    
     // Получаем отсортированные названия маршрутов
     std::vector<std::string> bus_names;
-    for (const auto& [name, bus] : catalogue.GetAllBuses()) {
+    for (const auto& [name, bus] : buses) {
         if (!bus->stops.empty()) {
             bus_names.push_back(std::string(name));
         }
@@ -106,7 +117,10 @@ void MapRenderer::RenderBusLabels(svg::Document& doc,
     
     size_t color_index = 0;
     for (const auto& bus_name : bus_names) {
-        const auto* bus = catalogue.FindBus(bus_name);
+        auto it = buses.find(bus_name);
+        if (it == buses.end()) continue;
+        
+        const auto* bus = it->second;
         if (!bus || bus->stops.empty()) {
             continue;
         }
@@ -177,12 +191,15 @@ void MapRenderer::RenderBusLabels(svg::Document& doc,
     }
 }
 
-void MapRenderer::RenderStopCircles(svg::Document& doc,
-                                   const transport::catalogue::TransportCatalogue& catalogue,
-                                   const SphereProjector& projector) const {
+void MapRenderer::RenderStopCircles(
+    svg::Document& doc,
+    const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+    std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
+    const SphereProjector& projector) const {
+    
     // Собираем все остановки, через которые проходит хотя бы один маршрут
     std::set<std::string> used_stops;
-    for (const auto& [name, bus] : catalogue.GetAllBuses()) {
+    for (const auto& [name, bus] : buses) {
         for (const auto* stop : bus->stops) {
             if (stop) {
                 used_stops.insert(stop->name);
@@ -191,7 +208,7 @@ void MapRenderer::RenderStopCircles(svg::Document& doc,
     }
     
     for (const auto& stop_name : used_stops) {
-        const auto* stop = catalogue.FindStop(stop_name);
+        const auto* stop = find_stop(stop_name);
         if (stop) {
             svg::Circle circle;
             circle.SetCenter(projector(stop->coordinates))
@@ -202,12 +219,15 @@ void MapRenderer::RenderStopCircles(svg::Document& doc,
     }
 }
 
-void MapRenderer::RenderStopLabels(svg::Document& doc,
-                                  const transport::catalogue::TransportCatalogue& catalogue,
-                                  const SphereProjector& projector) const {
+void MapRenderer::RenderStopLabels(
+    svg::Document& doc,
+    const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
+    std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
+    const SphereProjector& projector) const {
+    
     // Собираем все остановки, через которые проходит хотя бы один маршрут
     std::set<std::string> used_stops;
-    for (const auto& [name, bus] : catalogue.GetAllBuses()) {
+    for (const auto& [name, bus] : buses) {
         for (const auto* stop : bus->stops) {
             if (stop) {
                 used_stops.insert(stop->name);
@@ -216,7 +236,7 @@ void MapRenderer::RenderStopLabels(svg::Document& doc,
     }
     
     for (const auto& stop_name : used_stops) {
-        const auto* stop = catalogue.FindStop(stop_name);
+        const auto* stop = find_stop(stop_name);
         if (stop) {
             // Подложка
             svg::Text underlayer;
