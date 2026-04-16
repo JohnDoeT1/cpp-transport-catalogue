@@ -55,6 +55,10 @@ public:
     const std::unordered_map<std::string_view, const BusData*>& GetAllBuses() const {
         return buses_;
     }
+
+    const std::unordered_map<std::string_view, const StopData*>& GetAllStops() const {
+        return stops_;
+    }
     
 private:
     int GetDistance(const StopData* from, const StopData* to) const;

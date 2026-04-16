@@ -171,13 +171,11 @@ json::Node JsonReader::ProcessMapRequest(const json::Dict& request,
     json::Dict response;
     response["request_id"] = id;
     
-    // Рендерим карту в строку
     std::ostringstream svg_stream;
     
-    // Обновлённый вызов: передаём только нужные данные
     auto doc = renderer.Render(
         catalogue_.GetAllBuses(),
-        [this](std::string_view name) { return catalogue_.FindStop(name); }
+        catalogue_.GetAllStops()
     );
     
     doc.Render(svg_stream);

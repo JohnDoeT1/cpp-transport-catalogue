@@ -258,7 +258,6 @@ Node LoadBool(istream& input) {
             throw ParsingError("Invalid boolean value");
         }
         
-        // Проверяем, что после true идёт допустимый разделитель
         if (input) {
             char next = input.peek();
             if (!IsValidAfterValue(next) && next != EOF) {
@@ -279,7 +278,6 @@ Node LoadBool(istream& input) {
             throw ParsingError("Invalid boolean value");
         }
         
-        // Проверяем, что после false идёт допустимый разделитель
         if (input) {
             char next = input.peek();
             if (!IsValidAfterValue(next) && next != EOF) {
@@ -310,7 +308,6 @@ Node LoadNull(istream& input) {
         throw ParsingError("Invalid null value");
     }
     
-    // Проверяем, что после null идёт допустимый разделитель
     if (input) {
         char next = input.peek();
         if (!IsValidAfterValue(next) && next != EOF) {
@@ -412,99 +409,6 @@ void PrintNode(const Node& node, ostream& output) {
 
 }  // namespace
 
-Node::Node(std::nullptr_t) : value_(nullptr) {}
-Node::Node(Array array) : value_(move(array)) {}
-Node::Node(Dict map) : value_(move(map)) {}
-Node::Node(bool value) : value_(value) {}
-Node::Node(int value) : value_(value) {}
-Node::Node(double value) : value_(value) {}
-Node::Node(string value) : value_(move(value)) {}
-
-bool Node::IsInt() const {
-    return holds_alternative<int>(value_);
-}
-
-bool Node::IsDouble() const {
-    return holds_alternative<int>(value_) || holds_alternative<double>(value_);
-}
-
-bool Node::IsPureDouble() const {
-    return holds_alternative<double>(value_);
-}
-
-bool Node::IsBool() const {
-    return holds_alternative<bool>(value_);
-}
-
-bool Node::IsString() const {
-    return holds_alternative<string>(value_);
-}
-
-bool Node::IsNull() const {
-    return holds_alternative<nullptr_t>(value_);
-}
-
-bool Node::IsArray() const {
-    return holds_alternative<Array>(value_);
-}
-
-bool Node::IsMap() const {
-    return holds_alternative<Dict>(value_);
-}
-
-int Node::AsInt() const {
-    if (!IsInt()) {
-        throw logic_error("Node doesn't contain int");
-    }
-    return get<int>(value_);
-}
-
-bool Node::AsBool() const {
-    if (!IsBool()) {
-        throw logic_error("Node doesn't contain bool");
-    }
-    return get<bool>(value_);
-}
-
-double Node::AsDouble() const {
-    if (IsPureDouble()) {
-        return get<double>(value_);
-    } else if (IsInt()) {
-        return static_cast<double>(get<int>(value_));
-    } else {
-        throw logic_error("Node doesn't contain numeric value");
-    }
-}
-
-const string& Node::AsString() const {
-    if (!IsString()) {
-        throw logic_error("Node doesn't contain string");
-    }
-    return get<string>(value_);
-}
-
-const Array& Node::AsArray() const {
-    if (!IsArray()) {
-        throw logic_error("Node doesn't contain array");
-    }
-    return get<Array>(value_);
-}
-
-const Dict& Node::AsMap() const {
-    if (!IsMap()) {
-        throw logic_error("Node doesn't contain map");
-    }
-    return get<Dict>(value_);
-}
-
-bool Node::operator==(const Node& rhs) const {
-    return value_ == rhs.value_;
-}
-
-bool Node::operator!=(const Node& rhs) const {
-    return !(*this == rhs);
-}
-
 Document::Document(Node root) : root_(move(root)) {}
 
 const Node& Document::GetRoot() const {
@@ -523,7 +427,6 @@ Document Load(istream& input) {
     try {
         Document doc{LoadNode(input)};
         
-        // Проверяем, что после корневого элемента нет лишних символов кроме пробелов
         SkipWhitespace(input);
         if (input && input.peek() != EOF) {
             throw ParsingError("Unexpected characters after JSON document");

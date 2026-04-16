@@ -7,7 +7,6 @@
 #include <map>
 #include <optional>
 #include <algorithm>
-#include <functional>
 #include <unordered_map>
 #include <string_view>
 
@@ -44,7 +43,6 @@ public:
             return;
         }
         
-        // Находим минимальные и максимальные координаты
         const auto [left_it, right_it] = std::minmax_element(
             points_begin, points_end,
             [](const geo::Coordinates& lhs, const geo::Coordinates& rhs) {
@@ -61,7 +59,6 @@ public:
         min_lat_ = bottom_it->lat;
         max_lat_ = top_it->lat;
         
-        // Вычисляем коэффициент масштабирования
         std::optional<double> width_zoom;
         std::optional<double> height_zoom;
         
@@ -102,10 +99,9 @@ class MapRenderer {
 public:
     MapRenderer(const RenderSettings& settings);
     
-    // Метод принимает только необходимые данные: маршруты и функцию поиска остановки
     svg::Document Render(
         const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
-        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop
+        const std::unordered_map<std::string_view, const transport::catalogue::StopData*>& stops
     ) const;
     
 private:
@@ -124,14 +120,12 @@ private:
     void RenderStopCircles(
         svg::Document& doc,
         const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
-        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
         const SphereProjector& projector
     ) const;
     
     void RenderStopLabels(
         svg::Document& doc,
         const std::unordered_map<std::string_view, const transport::catalogue::BusData*>& buses,
-        std::function<const transport::catalogue::StopData*(std::string_view)> find_stop,
         const SphereProjector& projector
     ) const;
     
