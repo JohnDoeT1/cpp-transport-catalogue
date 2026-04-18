@@ -13,7 +13,6 @@ public:
     class DictItemContext;
     class KeyItemContext;
     class ArrayItemContext;
-    class ValueItemContext;
     
     Builder() = default;
     
@@ -108,6 +107,7 @@ private:
     
     void EnsureNotCompleted() const;
     void AddNode(Node node);
+    void StartContainer(bool is_dict);
     
     std::stack<NodeContext> nodes_stack_;
     std::optional<Node> root_;

@@ -55,12 +55,17 @@ Builder& Builder::Value(Node::Value value) {
     return *this;
 }
 
-Builder::DictItemContext Builder::StartDict() {
+void Builder::StartContainer(bool is_dict) {
     EnsureNotCompleted();
     
     NodeContext new_context;
-    new_context.is_dict = true;
-    new_context.dict = Dict{};
+    if (is_dict) {
+        new_context.is_dict = true;
+        new_context.dict = Dict{};
+    } else {
+        new_context.is_array = true;
+        new_context.array = Array{};
+    }
     new_context.key_set = false;
     
     if (nodes_stack_.empty()) {
@@ -75,8 +80,16 @@ Builder::DictItemContext Builder::StartDict() {
     }
     
     nodes_stack_.push(std::move(new_context));
-    
+}
+
+Builder::DictItemContext Builder::StartDict() {
+    StartContainer(true);
     return DictItemContext(*this);
+}
+
+Builder::ArrayItemContext Builder::StartArray() {
+    StartContainer(false);
+    return ArrayItemContext(*this);
 }
 
 Builder& Builder::EndDict() {
@@ -96,30 +109,6 @@ Builder& Builder::EndDict() {
     AddNode(std::move(node));
     
     return *this;
-}
-
-Builder::ArrayItemContext Builder::StartArray() {
-    EnsureNotCompleted();
-    
-    NodeContext new_context;
-    new_context.is_array = true;
-    new_context.array = Array{};
-    new_context.key_set = false;
-    
-    if (nodes_stack_.empty()) {
-        if (root_.has_value()) {
-            throw std::logic_error("Builder already has a root"s);
-        }
-    } else {
-        auto& top = nodes_stack_.top();
-        if (top.is_dict && !top.key_set) {
-            throw std::logic_error("Key not set"s);
-        }
-    }
-    
-    nodes_stack_.push(std::move(new_context));
-    
-    return ArrayItemContext(*this);
 }
 
 Builder& Builder::EndArray() {
