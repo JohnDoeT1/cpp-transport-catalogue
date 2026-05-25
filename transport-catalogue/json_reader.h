@@ -1,6 +1,7 @@
 #pragma once
 
 #include "transport_catalogue.h"
+#include "transport_router.h"
 #include "json.h"
 #include "map_renderer.h"
 #include <string>
@@ -15,9 +16,11 @@ public:
     
     void ParseBaseRequests(const json::Node& base_requests);
     renderer::RenderSettings ParseRenderSettings(const json::Node& render_settings);
+    transport::router::RoutingSettings ParseRoutingSettings(const json::Node& routing_settings);
     
     json::Document ProcessStatRequests(const json::Node& stat_requests,
-                                       const std::optional<renderer::RenderSettings>& render_settings = std::nullopt);
+                                       const std::optional<renderer::RenderSettings>& render_settings = std::nullopt,
+                                       const std::optional<transport::router::TransportRouter>& router = std::nullopt);
     
 private:
     void ParseStop(const json::Dict& stop_dict);
@@ -27,6 +30,7 @@ private:
     json::Node ProcessStopRequest(const json::Dict& request);
     json::Node ProcessBusRequest(const json::Dict& request);
     json::Node ProcessMapRequest(const json::Dict& request, const renderer::MapRenderer& renderer);
+    json::Node ProcessRouteRequest(const json::Dict& request, const transport::router::TransportRouter& router);
     
     svg::Color ParseColor(const json::Node& color_node);
     

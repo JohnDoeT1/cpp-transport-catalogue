@@ -44,7 +44,6 @@ void JsonReader::ParseBus(const json::Dict& bus_dict) {
 void JsonReader::ParseBaseRequests(const json::Node& base_requests) {
     const auto& requests = base_requests.AsArray();
     
-    // Первый проход: добавляем все остановки (только координаты)
     for (const auto& request : requests) {
         const auto& dict = request.AsDict();
         if (dict.at("type").AsString() == "Stop") {
@@ -52,7 +51,6 @@ void JsonReader::ParseBaseRequests(const json::Node& base_requests) {
         }
     }
     
-    // Второй проход: добавляем расстояния между остановками
     for (const auto& request : requests) {
         const auto& dict = request.AsDict();
         if (dict.at("type").AsString() == "Stop") {
@@ -60,7 +58,6 @@ void JsonReader::ParseBaseRequests(const json::Node& base_requests) {
         }
     }
     
-    // Третий проход: добавляем маршруты
     for (const auto& request : requests) {
         const auto& dict = request.AsDict();
         if (dict.at("type").AsString() == "Bus") {
@@ -119,6 +116,14 @@ renderer::RenderSettings JsonReader::ParseRenderSettings(const json::Node& rende
         settings.color_palette.push_back(ParseColor(color));
     }
     
+    return settings;
+}
+
+transport::router::RoutingSettings JsonReader::ParseRoutingSettings(const json::Node& routing_settings) {
+    transport::router::RoutingSettings settings;
+    const auto& dict = routing_settings.AsDict();
+    settings.bus_wait_time = dict.at("bus_wait_time").AsInt();
+    settings.bus_velocity = dict.at("bus_velocity").AsDouble();
     return settings;
 }
 
@@ -200,8 +205,59 @@ json::Node JsonReader::ProcessMapRequest(const json::Dict& request,
         .Build();
 }
 
+json::Node JsonReader::ProcessRouteRequest(const json::Dict& request, 
+                                            const transport::router::TransportRouter& router) {
+    std::string from = request.at("from").AsString();
+    std::string to = request.at("to").AsString();
+    int id = request.at("id").AsInt();
+    
+    auto route = router.BuildRoute(from, to);
+    
+    if (!route) {
+        return json::Builder{}
+            .StartDict()
+                .Key("request_id").Value(id)
+                .Key("error_message").Value(std::string("not found"))
+            .EndDict()
+            .Build();
+    }
+    
+    json::Array items;
+    for (const auto& item : route->items) {
+        std::visit([&items](const auto& concrete_item) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(concrete_item)>, transport::router::WaitItem>) {
+                items.push_back(json::Builder{}
+                    .StartDict()
+                        .Key("type").Value(concrete_item.type)
+                        .Key("stop_name").Value(concrete_item.stop_name)
+                        .Key("time").Value(concrete_item.time)
+                    .EndDict()
+                    .Build());
+            } else {
+                items.push_back(json::Builder{}
+                    .StartDict()
+                        .Key("type").Value(concrete_item.type)
+                        .Key("bus").Value(concrete_item.bus)
+                        .Key("span_count").Value(concrete_item.span_count)
+                        .Key("time").Value(concrete_item.time)
+                    .EndDict()
+                    .Build());
+            }
+        }, item);
+    }
+    
+    return json::Builder{}
+        .StartDict()
+            .Key("request_id").Value(id)
+            .Key("total_time").Value(route->total_time)
+            .Key("items").Value(items)
+        .EndDict()
+        .Build();
+}
+
 json::Document JsonReader::ProcessStatRequests(const json::Node& stat_requests,
-                                                const std::optional<renderer::RenderSettings>& render_settings) {
+                                                const std::optional<renderer::RenderSettings>& render_settings,
+                                                const std::optional<transport::router::TransportRouter>& router) {
     json::Builder builder;
     builder.StartArray();
     
@@ -226,6 +282,11 @@ json::Document JsonReader::ProcessStatRequests(const json::Node& stat_requests,
             }, node.GetValue());
         } else if (type == "Map" && renderer) {
             auto node = ProcessMapRequest(dict, *renderer);
+            std::visit([&builder](auto&& arg) {
+                builder.Value(std::forward<decltype(arg)>(arg));
+            }, node.GetValue());
+        } else if (type == "Route" && router) {
+            auto node = ProcessRouteRequest(dict, *router);
             std::visit([&builder](auto&& arg) {
                 builder.Value(std::forward<decltype(arg)>(arg));
             }, node.GetValue());

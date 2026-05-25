@@ -51,6 +51,7 @@ public:
     
     RouteStats GetBusInfo(std::string_view bus_name) const;
     std::set<std::string> GetBusesByStop(std::string_view stop_name) const;
+    int GetDistance(const StopData* from, const StopData* to) const;
     
     const std::unordered_map<std::string_view, const BusData*>& GetAllBuses() const {
         return buses_;
@@ -61,8 +62,6 @@ public:
     }
     
 private:
-    int GetDistance(const StopData* from, const StopData* to) const;
-    
     std::deque<StopData> stops_storage_;
     std::deque<BusData> buses_storage_;
     std::unordered_map<std::string_view, const StopData*> stops_;
